@@ -1,0 +1,588 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MI layer</title>
+</head>
+
+<body>
+	<script src="js\\d3.js" charset="utf-8"></script>   
+	<script src="js\\d3-queue.js"></script>
+	<script src="js\\buildmatrix.js"></script>
+    <script>
+
+	d3.queue()
+        .defer(d3.csv, "data\\CSV\\basiclayer\\nodes.csv")
+        .defer(d3.csv, "data\\CSV\\basiclayer\\csvdata.csv")
+        .defer(d3.csv, "data\\CSV\\middlelayer\\nodes.csv")
+        .defer(d3.csv, "data\\CSV\\middlelayer\\csvdata.csv")
+        .defer(d3.csv, "data\\CSV\\detaillayer\\nodes.csv")
+        .defer(d3.csv, "data\\CSV\\detaillayer\\csvdata.csv")
+        .defer(d3.csv, "data\\CSV\\marginallayer\\nodes.csv")
+        .defer(d3.csv, "data\\CSV\\marginallayer\\csvdata.csv")    
+        .await(ready);          //加载四个图的数据，然后返回回调函数
+		
+    function ready(error, nodes1, links1, nodes2, links2, nodes3, links3, nodes4, links4) {
+        if (error) throw error;
+
+		//构建四个图的矩阵
+		var basicmatrix = buildmatrix(nodes1, links1).matrix;
+		var basicnodes = buildmatrix(nodes1, links1).nodesname;
+		var middlematrix = buildmatrix(nodes2, links2).matrix;
+		var middlenodes = buildmatrix(nodes2, links2).nodesname;
+		var detailmatrix = buildmatrix(nodes3, links3).matrix;
+		var detailnodes = buildmatrix(nodes3, links3).nodesname;
+		var marginalmatrix = buildmatrix(nodes4, links4).matrix;
+		var marginalnodes = buildmatrix(nodes4, links4).nodesname;
+		
+        //定义相关变量
+        var width = 1600;       
+        var height = 1800;     //画布的高度和宽度
+        var margin = 260;     //画布周边的留白
+    	var padding = 0.025;    //节点跟节点之间的间隔
+        var radius = height/4 - margin;    //定义弦图的半径（内半径） 
+	  
+        //新建一个弧度生成器，用来画弧
+	    var arc = d3.svg.arc()    
+            .innerRadius(radius)
+            .outerRadius(radius + 22);	
+		
+        //定义一个弦生成器
+	    var inner_chord = d3.svg.chord()
+            .radius(radius);		  
+
+		//创建一个画布
+        var svg = d3.select("body")
+	        .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .append("g")
+            .attr("transform", "translate(" + width/2 + "," + height/2 + ")");    // 坐标原点移到svg中间
+		
+		
+//--------------------------------------------------------------The MI basic layer------------------------------------------------------------------
+//--------------------------------------------------------------The MI basic layer------------------------------------------------------------------
+//--------------------------------------------------------------The MI basic layer------------------------------------------------------------------
+
+    	//创建一个弦图布局
+        var basiclayout = d3.layout.chord()
+            .padding(padding)
+            .sortSubgroups(d3.descending)
+	        .sortChords(d3.ascending)  
+	        .matrix(basicmatrix)
+		
+		//应用该布局转换数据
+	 	var basicgroups = basiclayout.groups();
+        var basicchords = basiclayout.chords();
+		
+		//console.log(basicgroups);
+		//console.log(basicchords);
+		
+		//定义生成颜色的函数
+		var basicfill = function(d) {
+            if (basicnodes[d.index].search("(MI)") != -1) return "#FF8080";
+			if (basicnodes[d.index].search("(CS_basic)") != -1) return "hsl(" + parseInt((("e".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (basicnodes[d.index].search("(CS_middle)") != -1) return "hsl(" + parseInt((("f".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (basicnodes[d.index].search("(CS_detail)") != -1) return "hsl(" + parseInt((("l".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (basicnodes[d.index].search("(CS_marginal)") != -1) return "hsl(" + parseInt((("o".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+            //return "hsl(" + parseInt(((basicnodes[d.index][0].charCodeAt() - 97)/26) * 300) + ",90%,75%)";
+        }; 
+			
+		//每一个扇形区域是一个组，就是一个节点
+        var basicg = svg.selectAll("g.basicgroup")
+            .data(basicgroups)
+            .enter()
+			.append("g")
+            .attr("class", "basicgroup")
+            .attr("transform", function(d) {
+                return  "translate(" + (-width/4) + "," + -(height/4 + 50) + ")" ;
+            });		
+			
+		//画节点外围的弧
+        basicg.append("path")
+			.style("fill", basicfill)
+			.style("stroke", basicfill)
+			.style("fill-opacity", ".7")
+            .attr("d", arc)
+            .style("cursor", "pointer")
+            .on("mouseover", basicfade(0.1))
+            .on("mouseout", basicfade(1));
+
+			
+		//添加节点的文字
+        basicg.append("text")
+            .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+            .attr("dy", ".0000005em")
+            .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : ""; })
+            .attr("transform", function(d) {
+                return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                    "translate(" + (radius + 28) + ")" +
+                    (d.angle > Math.PI ? "rotate(180)" : "");
+            })
+            .style("cursor", "pointer")
+            .text(function(d) { return basicnodes[d.index]; })
+			//.style("font-weight", "lighter")
+			.style("font-size", "8px")
+            .on("mouseover", basicfade(0.1))
+            .on("mouseout", basicfade(1));
+		
+		//添加图表标题
+		var basictitle="(a)The MI basic layer "	
+        svg.append("g")
+           .append("text")
+           .text(basictitle)
+           .attr("class","title")
+           .attr("x", -(width/4))
+		   .attr("y", -80)
+		   .style("font-family", "Arial,微软雅黑")
+		   .style("font-size", "18px")
+		   .style("text-anchor", "middle");
+
+		//绘制连线（弦）
+        svg.selectAll("path.basicchord")
+            .data(basicchords)
+            .enter()
+			.append("path")
+            .attr("class", "basicchord")
+			.style("stroke", function(d) { return d3.rgb(basicfill(d.source)).darker(); })
+			.style("stroke-width", ".3px")
+            .style("fill", function(d) { return basicfill(d.source); })
+            .attr("d", inner_chord)
+            .attr("transform", function(d) {
+                return  "translate(" + (-width/4) + "," + -(height/4 + 50) + ")" ;
+            })
+            .style("opacity", 1);
+			
+	    // 定义隐藏函数
+        function basicfade(opacity){
+            return function(g, i) {
+                svg.selectAll(".basicchord")
+                    .filter(function(d) {
+                        return d.source.index != i && d.target.index != i;
+                    })
+                    .transition()
+                    .style("opacity", opacity);
+                var groupsnow = [];
+                svg.selectAll(".basicchord")
+                    .filter(function(d) {
+                    if (d.source.index == i) {
+                        groupsnow.push(d.target.index);
+                    }
+                    if (d.target.index == i) {
+                        groupsnow.push(d.source.index);
+                    }
+                    });
+                groupsnow.push(i);
+                var length = groupsnow.length;
+                svg.selectAll('.basicgroup')
+                   .filter(function(d) {
+                    for (var i = 0; i < length; i++) {
+                      if(groupsnow[i] == d.index) return false;
+                    }
+                    return true;
+                  })
+                  .transition()
+                  .style("opacity", opacity);
+            };
+	    };	
+					
+					
+//-----------------------------------------------------------------The MI middle layer-------------------------------------------------------------------
+//-----------------------------------------------------------------The MI middle layer-------------------------------------------------------------------
+//-----------------------------------------------------------------The MI middle layer-------------------------------------------------------------------
+			
+        //创建一个弦图布局
+        var middlelayout = d3.layout.chord()
+            .padding(padding)
+            .sortSubgroups(d3.descending)
+		    .sortChords(d3.ascending)    
+		    .matrix(middlematrix);
+			
+	    //应用该布局转换数据
+	    var middlegroups = middlelayout.groups();
+        var middlechords = middlelayout.chords();
+
+        //定义生成颜色的函数
+    	var middlefill = function(d) {
+            if (middlenodes[d.index].search("(MI)") != -1) return "#DF8020";
+			if (middlenodes[d.index].search("(CS_basic)") != -1) return "hsl(" + parseInt((("e".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (middlenodes[d.index].search("(CS_middle)") != -1) return "hsl(" + parseInt((("f".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (middlenodes[d.index].search("(CS_detail)") != -1) return "hsl(" + parseInt((("l".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (middlenodes[d.index].search("(CS_marginal)") != -1) return "hsl(" + parseInt((("o".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+        }; 	
+			
+		//每一个扇形区域是一个组，就是一个节点
+        var middleg = svg.selectAll("g.middlegroup")
+            .data(middlegroups)
+            .enter()
+	        .append("g")
+            .attr("class", "middlegroup")
+            .attr("transform", function(d) {
+                return "translate(" + width/4 + "," + -(height/4 + 50) + ")" ;
+            });		
+			
+	    //画节点外围的弧
+        middleg.append("path")
+		    .style("fill", middlefill)
+		    .style("stroke", middlefill)
+		    .style("fill-opacity", ".7")
+            .attr("d", arc)
+            .style("cursor", "pointer")
+            .on("mouseover", middlefade(0.1))
+            .on("mouseout", middlefade(1));
+	
+	    //添加节点的文字
+        middleg.append("text")
+            .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+            .attr("dy", ".0000005em")
+            .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : ""; })
+            .attr("transform", function(d) {
+                return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                        "translate(" + (radius + 28) + ")" +
+                        (d.angle > Math.PI ? "rotate(180)" : "");
+            })
+            .style("cursor", "pointer")
+            .text(function(d) { return middlenodes[d.index]; })
+		    //.style("font-weight", "lighter")
+		    .style("font-size", "8px")
+            .on("mouseover", middlefade(0.1))
+            .on("mouseout", middlefade(1));
+		
+		//添加图表标题
+	    var middletitle="(b)The MI middle layer "	
+        svg.append("g")
+           .append("text")
+           .text(middletitle)
+           .attr("class","title")
+           .attr("x", width/4 + 20)
+		   .attr("y", -80)
+	       .style("font-family", "Arial,微软雅黑")
+	       .style("font-size", "18px")
+	       .style("text-anchor", "middle");
+
+    	//绘制连线（弦）
+        svg.selectAll("path.middlechord")
+           .data(middlechords)
+           .enter()
+	       .append("path")
+           .attr("class", "middlechord")
+		   .style("stroke", function(d) { return d3.rgb(middlefill(d.source)).darker(); })
+		   .style("stroke-width", ".3px")
+           .style("fill", function(d) { return middlefill(d.source); })
+           .attr("d", inner_chord)
+           .attr("transform", function(d) {
+                return "translate(" + width/4 + "," + -(height/4 + 50) + ")" ;
+            })
+           .style("opacity", 1);
+	    // 定义隐藏函数
+        function middlefade(opacity){
+            return function(g, i) {
+                svg.selectAll(".middlechord")
+                    .filter(function(d) {
+                        return d.source.index != i && d.target.index != i;
+                    })
+                    .transition()
+                    .style("opacity", opacity);
+                var groupsnow = [];
+                svg.selectAll(".middlechord")
+                    .filter(function(d) {
+                    if (d.source.index == i) {
+                        groupsnow.push(d.target.index);
+                    }
+                    if (d.target.index == i) {
+                        groupsnow.push(d.source.index);
+                    }
+                    });
+                groupsnow.push(i);
+                var length = groupsnow.length;
+                svg.selectAll('.middlegroup')
+                   .filter(function(d) {
+                    for (var i = 0; i < length; i++) {
+                      if(groupsnow[i] == d.index) return false;
+                    }
+                    return true;
+                  })
+                  .transition()
+                  .style("opacity", opacity);
+            };
+	    };
+	
+	
+	
+//-----------------------------------------------------------The MI detail layer------------------------------------------------------
+//-----------------------------------------------------------The MI detail layer------------------------------------------------------
+//-----------------------------------------------------------The MI detail layer------------------------------------------------------
+	
+        //创建一个弦图布局
+        var detaillayout = d3.layout.chord()
+            .padding(padding)
+            .sortSubgroups(d3.descending)
+			.sortChords(d3.ascending)    
+			.matrix(detailmatrix);
+			
+		//应用该布局转换数据
+	 	var detailgroups = detaillayout.groups();
+        var detailchords = detaillayout.chords();
+
+		//定义生成颜色的函数
+		var detailfill = function(d) {
+            if (detailnodes[d.index].search("(MI)") != -1) return "#BFBFBF";
+			if (detailnodes[d.index].search("(CS_basic)") != -1) return "hsl(" + parseInt((("e".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (detailnodes[d.index].search("(CS_middle)") != -1) return "hsl(" + parseInt((("f".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (detailnodes[d.index].search("(CS_detail)") != -1) return "hsl(" + parseInt((("l".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (detailnodes[d.index].search("(CS_marginal)") != -1) return "hsl(" + parseInt((("o".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+        }; 
+		
+		//每一个扇形区域是一个组，就是一个节点
+        var detailg = svg.selectAll("g.detailgroup")
+            .data(detailgroups)
+            .enter()
+			.append("g")
+            .attr("class", "detailgroup")
+            .attr("transform", function(d) {
+                return "translate(" + (-width/4) + "," + (height/4 - 100) + ")" ;
+            });		
+			
+		//画节点外围的弧
+        detailg.append("path")
+			.style("fill", detailfill)
+			.style("stroke", detailfill)
+			.style("fill-opacity", ".7")
+            .attr("d", arc)
+            .style("cursor", "pointer")
+            .on("mouseover", detailfade(0.1))
+            .on("mouseout", detailfade(1));
+			
+		//添加节点的文字
+        detailg.append("text")
+            .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+            .attr("dy", ".0000005em")
+            .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : ""; })
+            .attr("transform", function(d) {
+                return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                    "translate(" + (radius + 26) + ")" +
+                    (d.angle > Math.PI ? "rotate(180)" : "");
+            })
+            .style("cursor", "pointer")
+            .text(function(d) { return detailnodes[d.index]; })
+			//.style("font-weight", "lighter")
+			.style("font-size", "8px")
+            .on("mouseover", detailfade(0.1))
+            .on("mouseout", detailfade(1));
+			
+		//添加图表标题
+		var detailtitle="(c)The MI detail layer "	
+        svg.append("g")
+           .append("text")
+           .text(detailtitle)
+           .attr("class","title")
+           .attr("x", -(width/4))		   
+           .attr("y", (height/2 - 130))
+		   .style("font-family", "Arial,微软雅黑")
+		   .style("font-size", "18px")
+		   .style("text-anchor", "middle");
+		
+		//绘制连线（弦）
+        svg.selectAll("path.detailchord")
+            .data(detailchords)
+            .enter()
+			.append("path")
+            .attr("class", "detailchord")
+			.style("stroke", function(d) { return d3.rgb(detailfill(d.source)).darker(); })
+			.style("stroke-width", ".85px")
+            .style("fill", function(d) { return detailfill(d.source); })
+            .attr("d", inner_chord)
+            .attr("transform", function(d) {
+                return "translate(" + (-width/4) + "," + (height/4 - 100) + ")" ;
+            })
+            .style("opacity", 1);
+			
+		// 定义隐藏函数
+        function detailfade(opacity){
+            return function(g, i) {
+                svg.selectAll(".detailchord")
+                    .filter(function(d) {
+                        return d.source.index != i && d.target.index != i;
+                    })
+                    .transition()
+                    .style("opacity", opacity);
+                var groupsnow = [];
+                svg.selectAll(".detailchord")
+                    .filter(function(d) {
+                    if (d.source.index == i) {
+                        groupsnow.push(d.target.index);
+                    }
+                    if (d.target.index == i) {
+                        groupsnow.push(d.source.index);
+                    }
+                    });
+                groupsnow.push(i);
+                var length = groupsnow.length;
+                svg.selectAll('.detailgroup')
+                   .filter(function(d) {
+                    for (var i = 0; i < length; i++) {
+                      if(groupsnow[i] == d.index) return false;
+                    }
+                    return true;
+                  })
+                  .transition()
+                  .style("opacity", opacity);
+            };
+		};
+
+		
+		
+		
+//-------------------------------------------------------The MI marginal layer---------------------------------------------------------
+//-------------------------------------------------------The MI marginal layer---------------------------------------------------------
+//-------------------------------------------------------The MI marginal layer---------------------------------------------------------
+			
+        //创建一个弦图布局
+        var marginallayout = d3.layout.chord()
+            .padding(padding)
+            .sortSubgroups(d3.descending)
+			.sortChords(d3.ascending)    
+			.matrix(marginalmatrix);
+			
+		//应用该布局转换数据
+	 	var marginalgroups = marginallayout.groups();
+        var marginalchords = marginallayout.chords();
+		
+		//console.log(groups);
+		//console.log(chords);
+
+		//定义生成颜色的函数
+		var marginalfill = function(d) {
+            if (marginalnodes[d.index].search("(MI)") != -1) return "#4040FF";
+			if (marginalnodes[d.index].search("(CS_basic)") != -1) return "hsl(" + parseInt((("e".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (marginalnodes[d.index].search("(CS_middle)") != -1) return "hsl(" + parseInt((("f".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (marginalnodes[d.index].search("(CS_detail)") != -1) return "hsl(" + parseInt((("l".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+			if (marginalnodes[d.index].search("(CS_marginal)") != -1) return "hsl(" + parseInt((("o".charCodeAt() - 97)/26) * 360) + ",90%,70%)";
+        }; 
+		
+		//每一个扇形区域是一个组，就是一个节点
+        var marginalg = svg.selectAll("g.marginalgroup")
+            .data(marginalgroups)
+            .enter()
+			.append("g")
+            .attr("class", "marginalgroup")
+            .attr("transform", function(d) {
+                return "translate(" + width/4 + "," + (height/4 - 100) + ")" ;
+            });		
+			
+		//画节点外围的弧
+        marginalg.append("path")
+			.style("fill", marginalfill)
+			.style("stroke", marginalfill)
+			.style("fill-opacity", ".7")
+            .attr("d", arc)
+            .style("cursor", "pointer")
+            .on("mouseover", marginalfade(0.1))
+            .on("mouseout", marginalfade(1));
+			
+		//添加节点的文字
+        marginalg.append("text")
+            .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+            .attr("dy", ".0000005em")
+            .attr("text-anchor", function(d) { return d.angle > Math.PI ? "end" : ""; })
+            .attr("transform", function(d) {
+                return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                    "translate(" + (radius + 28) + ")" +
+                    (d.angle > Math.PI ? "rotate(180)" : "");
+            })
+            .style("cursor", "pointer")
+            .text(function(d) { return marginalnodes[d.index]; })
+			//.style("font-weight", "lighter")
+			.style("font-size", "8px")
+            .on("mouseover", marginalfade(0.1))
+            .on("mouseout", marginalfade(1));
+			
+		//添加图表标题
+		var marginaltitle="(d)The MI marginal layer "	
+        svg.append("g")
+           .append("text")
+           .text(marginaltitle)
+           .attr("class","title")
+           .attr("x", width/4 + 20)
+           .attr("y", (height/2 - 130))
+		   .style("font-family", "Arial,微软雅黑")
+		   .style("font-size", "18px")
+		   .style("text-anchor", "middle");
+		
+		//绘制连线（弦）
+        svg.selectAll("path.marginalchord")
+            .data(marginalchords)
+            .enter()
+			.append("path")
+            .attr("class", "marginalchord")
+			.style("stroke", function(d) { return d3.rgb(marginalfill(d.source)).darker(); })
+			.style("stroke-width", ".3px")
+            .style("fill", function(d) { return marginalfill(d.source); })
+            .attr("d", inner_chord)
+            .attr("transform", function(d) {
+                return "translate(" + width/4 + "," + (height/4 - 100) + ")" ;
+            })
+            .style("opacity", 1);
+			
+		// 定义隐藏函数
+        function marginalfade(opacity){
+                return function(g, i) {
+                svg.selectAll(".marginalchord")
+                    .filter(function(d) {
+                        return d.source.index != i && d.target.index != i;
+                    })
+                    .transition()
+                    .style("opacity", opacity);
+                var groupsnow = [];
+                svg.selectAll(".marginalchord")
+                    .filter(function(d) {
+                    if (d.source.index == i) {
+                        groupsnow.push(d.target.index);
+                    }
+                    if (d.target.index == i) {
+                        groupsnow.push(d.source.index);
+                    }
+                    });
+                groupsnow.push(i);
+                var length = groupsnow.length;
+                svg.selectAll('.marginalgroup')
+                   .filter(function(d) {
+                    for (var i = 0; i < length; i++) {
+                      if(groupsnow[i] == d.index) return false;
+                    }
+                    return true;
+                  })
+                  .transition()
+                  .style("opacity", opacity);
+            };
+	        };
+			
+	
+//-----------------------------------------------------------图总标题------------------------------------------------------
+
+        //添加图表标题
+		var titleall1="The association structures for CS terms in four MI layers: (a) basic, (b) middle, (c) detail, (d) marginal.Term (CS_basic) represents"	
+        svg.append("text")
+           .text(titleall1)
+           .attr("class","title")
+           .attr("x", 10)
+           .attr("y", (height/2 - 30))
+		   .style("font-family", "Arial,微软雅黑")
+		   .style("font-size", "22px")
+		   .style("text-anchor", "middle");
+	    var titleall2="the CS term from the CS basic layer and term (MI) denotes the term in MI layer connecting with these CS terms"	
+        svg.append("text")
+           .text(titleall2)
+           .attr("class","title")
+           .attr("x", 10)
+           .attr("y", (height/2))
+		   .style("font-family", "Arial,微软雅黑")
+		   .style("font-size", "22px")
+		   .style("text-anchor", "middle");
+
+};
+	</script>
+
+
+</body>
+</html>
